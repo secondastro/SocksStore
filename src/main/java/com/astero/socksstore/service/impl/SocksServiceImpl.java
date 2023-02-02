@@ -16,9 +16,9 @@ import java.util.*;
 @Service
 public class SocksServiceImpl implements SocksService {
 
-    private static HashMap<Color, HashMap<Integer, ArrayList<Integer>>> socksMap;
+    private static HashMap<Color, HashMap<Integer, HashMap<Integer, Integer>>> socksMap;
 
-    private FileService fileService;
+    private final FileService fileService;
 
     public SocksServiceImpl(FileService fileService) {
         this.fileService = fileService;
@@ -42,15 +42,19 @@ public class SocksServiceImpl implements SocksService {
         int quantity = socks.getQuantity();
 
 
-        ArrayList<Integer> socksList = getList(color, size, cottonPart, quantity);
-        for (int i = 0; i < quantity; i++) {
-            socksList.add(cottonPart);
+        HashMap<Integer, Integer> countMap = getCountMap(color, size, cottonPart, quantity);
+        if (countMap.containsKey(cottonPart)) {
+            int newCount = countMap.get(cottonPart) + quantity;
+            countMap.put(cottonPart,newCount);
+        } else {
+            countMap.put(cottonPart, quantity);
         }
-        HashMap<Integer, ArrayList<Integer>> tempMap = socksMap.getOrDefault(socks.getColor(), new HashMap<>());
-        tempMap.put(size, socksList);
-        socksMap.put(socks.getColor(), tempMap);
+
+        HashMap<Integer, HashMap<Integer,Integer>> sizeMap = socksMap.getOrDefault(socks.getColor(), new HashMap<>());
+        sizeMap.put(size, countMap);
+        socksMap.put(socks.getColor(), sizeMap);
         saveToFile();
-        return socksList.size();
+        return countMap.get(cottonPart);
     }
 
 
@@ -61,40 +65,34 @@ public class SocksServiceImpl implements SocksService {
         int cottonPart = socks.getCottonPart();
         int quantity = socks.getQuantity();
 
-        ArrayList<Integer> socksList = removeSocksFromList(color, size, cottonPart, quantity);
-        socksMap.get(socks.getColor()).put(size, socksList);
+        int newCount = removeSocksFromMap(color, size, cottonPart, quantity);
+        socksMap.get(socks.getColor()).get(size).put(cottonPart, newCount);
         saveToFile();
-        return socksList.size();
+        return newCount;
     }
 
 
     @Override
     public int getQuantity(String color, int size, int cottonMin, int cottonMax) {
-        ArrayList<Integer> socksList = getList(color, size, 1, 1);
-        int counter = 0;
-        for (Integer i : socksList) {
-            if (i >= cottonMin && i <= cottonMax) {
-                counter++;
+        HashMap<Integer,Integer> countMap = getCountMap(color, size, 1, 1);
+        int count = 0;
+        for (int i : countMap.keySet()) {
+            if (i>=cottonMin&& i<=cottonMax) {
+                count += countMap.get(i);
             }
         }
-        return counter;
+        return count;
     }
-
 
 
     private void readFromFile() {
         String json = fileService.readFromFile();
         try {
-            HashMap<Color, HashMap<Integer, ArrayList<Integer>>> hashMap =
-                    new ObjectMapper().readValue(json, new TypeReference<>() {
-                    });
-            socksMap = hashMap;
+            socksMap = new ObjectMapper().readValue(json, new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-    }
-    private void addToFile() {
-
     }
 
     private void saveToFile() {
@@ -105,36 +103,24 @@ public class SocksServiceImpl implements SocksService {
             throw new RuntimeException(e);
         }
     }
-    private ArrayList<Integer> getList(String color, int size, int cottonPart, int quantity) {
+
+    private HashMap<Integer, Integer> getCountMap(String color, int size, int cottonPart, int quantity) {
         checkParams(color, size, cottonPart, quantity);
         Color localColor = Color.valueOf(color);
-        HashMap<Integer, ArrayList<Integer>> sizeMap = socksMap.getOrDefault(localColor, new HashMap<>());
-        return sizeMap.getOrDefault(size, new ArrayList<>());
+        HashMap<Integer, HashMap<Integer, Integer>> sizeMap = socksMap.getOrDefault(localColor, new HashMap<>());
+        return sizeMap.getOrDefault(size, new HashMap<>());
     }
 
-    private ArrayList<Integer> removeSocksFromList(String color, int size, int cottonPart, int quantity) {
-        ArrayList<Integer> socksList = getList(color, size, cottonPart, quantity);
-        if (!socksList.contains(cottonPart)) {
+    private int removeSocksFromMap(String color, int size, int cottonPart, int quantity) {
+        HashMap<Integer,Integer> countMap = getCountMap(color, size, cottonPart, quantity);
+        if (!countMap.containsKey(cottonPart)) {
             throw new IllegalArgumentException("Носков с такими параметрами нет");
         }
-        int equals = 0;
-        for (Integer integer : socksList) {
-            if (integer == cottonPart) {
-                equals += 1;
-            }
-            if (equals == quantity) {
-                break;
-            }
-        }
-        if (equals < quantity) {
+        if (quantity > countMap.get(cottonPart)) {
             throw new IllegalArgumentException("На складе нет такого количества носков с заданными параметрами");
         }
-        for (int i = 0; i < quantity; i++) {
-            if (socksList.get(i) == cottonPart) {
-                socksList.remove(i);
-            }
-        }
-        return socksList;
+        return countMap.get(cottonPart)-quantity;
+
     }
 
     private static void checkParams(String color, int size, int cottonPart, int quantity) {
