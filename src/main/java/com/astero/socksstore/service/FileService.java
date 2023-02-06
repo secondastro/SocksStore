@@ -7,7 +7,17 @@ public interface FileService {
 
     String readFromFile();
 
-    boolean saveToFile(String json);
+    String readOperationsFromFile();
 
-    File getDataFile();
+    void saveToFile(String json);
+
+    File getSocksFile();
+
+    File getOperationFile();
+
+    void cleanDataFile();
+
+    void cleanOperationsFile();
+
+    void saveOperationToFile(String json);
 }

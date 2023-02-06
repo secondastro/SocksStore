@@ -1,8 +1,11 @@
 package com.astero.socksstore.service.impl;
 
 import com.astero.socksstore.model.Color;
+import com.astero.socksstore.model.Operation.Operation;
+import com.astero.socksstore.model.Operation.OperationType;
 import com.astero.socksstore.model.Socks;
 import com.astero.socksstore.service.FileService;
+import com.astero.socksstore.service.OperationService;
 import com.astero.socksstore.service.SocksService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -11,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -20,14 +24,18 @@ public class SocksServiceImpl implements SocksService {
 
     private final FileService fileService;
 
-    public SocksServiceImpl(FileService fileService) {
+    private final OperationService operationService;
+
+    public SocksServiceImpl(FileService fileService, OperationService operationService) {
         this.fileService = fileService;
+        this.operationService = operationService;
     }
 
     @PostConstruct
     public void init() {
         try {
             readFromFile();
+            operationService.readOperationsFromFile();
         } catch (Exception e) {
             System.out.println("Файл еще не создан");
             e.printStackTrace();
@@ -45,15 +53,16 @@ public class SocksServiceImpl implements SocksService {
         HashMap<Integer, Integer> countMap = getCountMap(color, size, cottonPart, quantity);
         if (countMap.containsKey(cottonPart)) {
             int newCount = countMap.get(cottonPart) + quantity;
-            countMap.put(cottonPart,newCount);
+            countMap.put(cottonPart, newCount);
         } else {
             countMap.put(cottonPart, quantity);
         }
 
-        HashMap<Integer, HashMap<Integer,Integer>> sizeMap = socksMap.getOrDefault(socks.getColor(), new HashMap<>());
+        HashMap<Integer, HashMap<Integer, Integer>> sizeMap = socksMap.getOrDefault(socks.getColor(), new HashMap<>());
         sizeMap.put(size, countMap);
         socksMap.put(socks.getColor(), sizeMap);
         saveToFile();
+        operationService.addOperationToList(new Operation(OperationType.ADD, LocalDateTime.now().toString(), socks));
         return countMap.get(cottonPart);
     }
 
@@ -68,24 +77,39 @@ public class SocksServiceImpl implements SocksService {
         int newCount = removeSocksFromMap(color, size, cottonPart, quantity);
         socksMap.get(socks.getColor()).get(size).put(cottonPart, newCount);
         saveToFile();
+        operationService.addOperationToList(new Operation(OperationType.SELL, LocalDateTime.now().toString(), socks));
+        return newCount;
+    }
+
+    @Override
+    public int writeOffSocks(Socks socks) {
+        String color = socks.getColor().name();
+        int size = socks.getSize();
+        int cottonPart = socks.getCottonPart();
+        int quantity = socks.getQuantity();
+
+        int newCount = removeSocksFromMap(color, size, cottonPart, quantity);
+        socksMap.get(socks.getColor()).get(size).put(cottonPart, newCount);
+        saveToFile();
+        operationService.addOperationToList(new Operation(OperationType.WRITE_OFF, LocalDateTime.now().toString(), socks));
         return newCount;
     }
 
 
     @Override
     public int getQuantity(String color, int size, int cottonMin, int cottonMax) {
-        HashMap<Integer,Integer> countMap = getCountMap(color, size, 1, 1);
+        HashMap<Integer, Integer> countMap = getCountMap(color, size, 1, 1);
         int count = 0;
         for (int i : countMap.keySet()) {
-            if (i>=cottonMin&& i<=cottonMax) {
+            if (i >= cottonMin && i <= cottonMax) {
                 count += countMap.get(i);
             }
         }
         return count;
     }
 
-
-    private void readFromFile() {
+    @Override
+    public void readFromFile() {
         String json = fileService.readFromFile();
         try {
             socksMap = new ObjectMapper().readValue(json, new TypeReference<>() {
@@ -112,14 +136,14 @@ public class SocksServiceImpl implements SocksService {
     }
 
     private int removeSocksFromMap(String color, int size, int cottonPart, int quantity) {
-        HashMap<Integer,Integer> countMap = getCountMap(color, size, cottonPart, quantity);
+        HashMap<Integer, Integer> countMap = getCountMap(color, size, cottonPart, quantity);
         if (!countMap.containsKey(cottonPart)) {
             throw new IllegalArgumentException("Носков с такими параметрами нет");
         }
         if (quantity > countMap.get(cottonPart)) {
             throw new IllegalArgumentException("На складе нет такого количества носков с заданными параметрами");
         }
-        return countMap.get(cottonPart)-quantity;
+        return countMap.get(cottonPart) - quantity;
 
     }
 

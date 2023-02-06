@@ -151,7 +151,7 @@ public class SocksController {
 
     public ResponseEntity<String> writeOffSocks(@RequestBody Socks socks) {
         try {
-            int i = socksService.removeSocks(socks);
+            int i = socksService.writeOffSocks(socks);
             return ResponseEntity.ok("Списано " + socks.getQuantity() + " пар носков. Осталось " + i + " пар с такими параметрами");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage() + '\n' + s);

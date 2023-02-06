@@ -11,11 +11,15 @@ import java.nio.file.Path;
 
 @Service
 public class FileServiceImpl implements FileService {
-    @Value("${application.file.path}")
+    @Value("${application.socks.file.path}")
     private String filePath;
 
-    @Value("${application.file.name}")
+    @Value("${application.socks.file.name}")
     private String fileName;
+
+
+    @Value("${application.operations.file.name}")
+    private String operationsFileName;
 
     @Override
     public String readFromFile() {
@@ -29,34 +33,69 @@ public class FileServiceImpl implements FileService {
             throw new RuntimeException(e.getMessage());
         }
     }
+    @Override
+    public String readOperationsFromFile() {
+        Path path = Path.of(filePath, operationsFileName);
+        try {
+            if (!Files.exists(path)) {
+                Files.writeString(path, "{}");
+            }
+            return Files.readString(path);
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
 
 
     @Override
-    public boolean saveToFile(String json) {
+    public void saveToFile(String json) {
         try {
             cleanDataFile();
             Files.writeString(Path.of(filePath, fileName), json);
-            return true;
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
         }
     }
 
     @Override
-    public File getDataFile() {
+    public File getSocksFile() {
         return new File(filePath + "/" + fileName);
     }
 
-    private boolean cleanDataFile() {
+    @Override
+    public File getOperationFile() {
+        return new File(filePath + "/" + operationsFileName);
+    }
+
+    @Override
+    public void cleanDataFile() {
         Path path = Path.of(filePath, fileName);
         try {
             Files.deleteIfExists(path);
             Files.createFile(path);
-            return true;
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
+        }
+    }
+    @Override
+    public void cleanOperationsFile() {
+        Path path = Path.of(filePath, operationsFileName);
+        try {
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void saveOperationToFile(String json) {
+        try {
+            cleanOperationsFile();
+            Files.writeString(Path.of(filePath, operationsFileName),  json);
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
