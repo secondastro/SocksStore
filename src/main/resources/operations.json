@@ -1,0 +1,22 @@
+[
+  {
+    "operationType": "ADD",
+    "localDateTime": "2023-02-06T23:21:21.476426300",
+    "socks": {
+      "color": "RED",
+      "size": 45,
+      "cottonPart": 25,
+      "quantity": 1
+    }
+  },
+  {
+    "operationType": "ADD",
+    "localDateTime": "2023-02-06T23:21:38.647409500",
+    "socks": {
+      "color": "RED",
+      "size": 45,
+      "cottonPart": 25,
+      "quantity": 1
+    }
+  }
+]
