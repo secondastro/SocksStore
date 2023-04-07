@@ -5,9 +5,9 @@ import java.io.File;
 public interface FileService {
 
 
-    String readFromFile();
+     String readFromFile();
 
-    String readOperationsFromFile();
+     String readOperationsFromFile();
 
     void saveToFile(String json);
 
